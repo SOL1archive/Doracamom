@@ -11,13 +11,18 @@
 
 
 from __future__ import division
+import os
 import sys
-sys.path.insert(0, '/mnt/zhenglianqing/bevformer_noted/')
+from pathlib import Path
+os.environ.setdefault("MPLCONFIGDIR", f"/tmp/matplotlib-{os.environ.get('USER', 'user')}")
+os.makedirs(os.environ["MPLCONFIGDIR"], exist_ok=True)
+repo_root = Path(__file__).resolve().parents[1]
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
 from collections import OrderedDict
 import argparse
 import copy
 import mmcv
-import os
 import time
 import torch
 import warnings

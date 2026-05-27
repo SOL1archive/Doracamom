@@ -11,12 +11,16 @@ from mmcv.utils import ext_loader
 # ext_module = ext_loader.load_ext(
 #     '_ext', ['ms_deform_attn_backward', 'ms_deform_attn_forward'])
 import sys
+from pathlib import Path
 
 
 # sys.path.append("/root/autodl-tmp/vox/mmcv-main/cntest/build/lib.linux-x86_64-cpython-38/")
 # sys.path.append("/home/yml/bevformer/mmdetection3d/deform_3d_cuda/")
 # raise NotImplementedError("Use sys.path.append here to modify the path to your .so file")
-sys.path.append("/mnt/zhenglianqing/Doracamom/deform_attn_3d/")
+repo_root = Path(__file__).resolve().parents[4]
+deform_attn_path = repo_root / "deform_attn_3d"
+if str(deform_attn_path) not in sys.path:
+    sys.path.append(str(deform_attn_path))
 
 
 

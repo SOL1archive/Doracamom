@@ -19,7 +19,7 @@ def get_extensions():
         os.environ.setdefault('MAX_JOBS', str(cpu_use))
     define_macros = []
 
-    if torch.cuda.is_available():
+    if torch.cuda.is_available() or os.getenv('FORCE_CUDA', '0') == '1':
         print(f'Compiling {ext_name} with CUDA')
         define_macros += [('WITH_CUDA', None)]
         # op_files = glob.glob('./csrc/*')

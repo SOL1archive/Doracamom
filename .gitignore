@@ -18,6 +18,10 @@ data
 test/
 val/
 work_dirs/
+logs/
+slurm-*.out
+slurm-*.err
+mmdetection3d.pre-merge-local/
 develop-eggs/
 dist/
 downloads/

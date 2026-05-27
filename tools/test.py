@@ -3,11 +3,16 @@
 # ---------------------------------------------
 #  Modified by Zhiqi Li
 # ---------------------------------------------
+import os
 import sys
-sys.path.insert(0, '/mnt/zhenglianqing/Doracamom')
+from pathlib import Path
+os.environ.setdefault("MPLCONFIGDIR", f"/tmp/matplotlib-{os.environ.get('USER', 'user')}")
+os.makedirs(os.environ["MPLCONFIGDIR"], exist_ok=True)
+repo_root = Path(__file__).resolve().parents[1]
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
 import argparse
 import mmcv
-import os
 import torch
 import warnings
 from mmcv import Config, DictAction
