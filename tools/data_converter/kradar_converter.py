@@ -75,16 +75,20 @@ def _collect_samples(root_path):
     for seq_dir in seq_dirs:
         for label_path in sorted((seq_dir / 'info_label').glob('*.txt')):
             frame_id = label_path.stem
+            frame_ids = _frame_id_candidates(frame_id)
             samples.append(
                 dict(
                     seq=seq_dir.name,
                     seq_dir=seq_dir,
                     frame_id=frame_id,
                     label_path=label_path,
-                    image_path=_find_frame_file(seq_dir, frame_id,
-                                                ['cam-front', 'cam_front']),
-                    cube_path=_find_frame_file(seq_dir, frame_id,
-                                               ['radar_zyx_cube'])))
+                    image_path=_find_frame_file(
+                        seq_dir, frame_ids,
+                        ['cam-front', 'cam_front', 'front_image',
+                         'radar_bev_image']),
+                    cube_path=_find_frame_file(
+                        seq_dir, frame_ids,
+                        ['radar_zyx_cube', 'radar_tesseract'])))
     return samples
 
 
@@ -130,6 +134,8 @@ def _load_cube_points(cube_path, cube_percentile, max_points):
             raise ImportError('scipy is required to read K-Radar .mat cubes.')
         mat = loadmat(cube_path)
         cube = _pick_cube_array(mat, cube_path)
+    while cube.ndim > 3:
+        cube = np.max(cube, axis=0)
     cube = np.flip(cube, axis=0)
     cube = np.maximum(cube, 0)
     nonzero = cube[cube > 0]
@@ -182,7 +188,8 @@ def _load_labels(label_path, sample, coord_type, z_offset):
 
 
 def _pick_cube_array(mat, cube_path):
-    for key in ('arr_zyx', 'radar_zyx_cube', 'cube', 'arr'):
+    for key in ('arr_zyx', 'radar_zyx_cube', 'arrDREA',
+                'radar_tesseract', 'cube', 'arr'):
         if key in mat:
             return np.asarray(mat[key])
 
@@ -267,22 +274,32 @@ def _link_image(src_path, out_dir, sample_idx):
     return image.shape, str(dst_rel)
 
 
-def _find_frame_file(seq_dir, frame_id, dirs):
+def _frame_id_candidates(frame_id):
+    parts = frame_id.split('_')
+    candidates = [frame_id]
+    for part in parts:
+        if part and part not in candidates:
+            candidates.append(part)
+    return candidates
+
+
+def _find_frame_file(seq_dir, frame_ids, dirs):
     for dirname in dirs:
         base = seq_dir / dirname
         if not base.exists():
             continue
-        for ext in ('.mat', '.npy', '.jpg', '.jpeg', '.png'):
-            exact = base / f'{frame_id}{ext}'
-            if exact.exists():
-                return exact
-        for ext in ('.mat', '.npy', '.jpg', '.jpeg', '.png'):
-            matches = sorted(
-                path for path in base.glob(f'*{frame_id}*{ext}')
-                if path.stem == frame_id or path.stem.endswith(f'_{frame_id}')
-            )
-            if matches:
-                return matches[0]
+        for frame_id in frame_ids:
+            for ext in ('.mat', '.npy', '.jpg', '.jpeg', '.png'):
+                exact = base / f'{frame_id}{ext}'
+                if exact.exists():
+                    return exact
+            for ext in ('.mat', '.npy', '.jpg', '.jpeg', '.png'):
+                matches = sorted(
+                    path for path in base.glob(f'*{frame_id}*{ext}')
+                    if path.stem == frame_id
+                    or path.stem.endswith(f'_{frame_id}'))
+                if matches:
+                    return matches[0]
     return None
 
 
