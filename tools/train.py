@@ -276,7 +276,7 @@ def main():
 
 #----------------------按照bevfusion读取预训练模型----------------------
 #----------读取图像预训练模型,有时候需要重命名------------
-    if 'load_img_from' in cfg:
+    if cfg.get('load_img_from', None) is not None:
         logger.info(cfg.load_img_from)
         checkpoint= torch.load(cfg.load_img_from, map_location='cpu')
         if 'state_dict' in checkpoint:
@@ -317,7 +317,7 @@ def main():
 
 #-------------------------------------------------------------
     #---------有时候模型的dict是对应的不需要改名-----------
-    if 'load_img_from_and_not_change_state_dict' in cfg:
+    if cfg.get('load_img_from_and_not_change_state_dict', None) is not None:
 
         logger.info(cfg.load_img_from_and_not_change_state_dict)
         checkpoint= torch.load(cfg.load_img_from_and_not_change_state_dict, map_location='cpu')
@@ -353,7 +353,7 @@ def main():
 #-------------------------------------------------------------
 
     #------这个是训练好的图像分支，包含了LSS，去掉pts_bbox_head------
-    if 'load_lift_from' in cfg:
+    if cfg.get('load_lift_from', None) is not None:
         print(cfg.load_lift_from)
         checkpoint= torch.load(cfg.load_lift_from, map_location='cpu')
         if 'state_dict' in checkpoint:
@@ -387,7 +387,7 @@ def main():
 #-------------------------------------------------------------
 
     #---------读取点云的去掉head之外的部分-----------
-    if 'load_pts_from' in cfg:
+    if cfg.get('load_pts_from', None) is not None:
 
         logger.info(cfg.load_pts_from)
         checkpoint= torch.load(cfg.load_pts_from, map_location='cpu')

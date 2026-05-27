@@ -128,7 +128,8 @@ def _load_cube_points(cube_path, cube_percentile, max_points):
     else:
         if loadmat is None:
             raise ImportError('scipy is required to read K-Radar .mat cubes.')
-        cube = loadmat(cube_path)['arr_zyx']
+        mat = loadmat(cube_path)
+        cube = _pick_cube_array(mat, cube_path)
     cube = np.flip(cube, axis=0)
     cube = np.maximum(cube, 0)
     nonzero = cube[cube > 0]
@@ -180,6 +181,21 @@ def _load_labels(label_path, sample, coord_type, z_offset):
     return np.array(boxes, dtype=np.float32), np.array(names)
 
 
+def _pick_cube_array(mat, cube_path):
+    for key in ('arr_zyx', 'radar_zyx_cube', 'cube', 'arr'):
+        if key in mat:
+            return np.asarray(mat[key])
+
+    candidates = [
+        value for key, value in mat.items()
+        if not key.startswith('__') and isinstance(value, np.ndarray)
+        and value.ndim >= 3
+    ]
+    if candidates:
+        return np.asarray(max(candidates, key=lambda arr: arr.size))
+    raise KeyError(f'No 3D radar cube array found in {cube_path}.')
+
+
 def _make_annos(boxes_lidar, names, image_shape):
     num = len(names)
     if num == 0:
@@ -192,6 +208,7 @@ def _make_annos(boxes_lidar, names, image_shape):
             dimensions=np.zeros((0, 3), dtype=np.float32),
             location=np.zeros((0, 3), dtype=np.float32),
             rotation_y=np.array([]),
+            difficulty=np.array([], dtype=np.int32),
             score=np.array([]))
 
     centers_cam = boxes_lidar[:, :3] @ VELO_TO_CAM[:3, :3].T
@@ -207,6 +224,7 @@ def _make_annos(boxes_lidar, names, image_shape):
         dimensions=dims_cam.astype(np.float32),
         location=centers_cam.astype(np.float32),
         rotation_y=boxes_lidar[:, 6].astype(np.float32),
+        difficulty=np.zeros(num, dtype=np.int32),
         score=np.ones(num, dtype=np.float32))
 
 
@@ -255,7 +273,14 @@ def _find_frame_file(seq_dir, frame_id, dirs):
         if not base.exists():
             continue
         for ext in ('.mat', '.npy', '.jpg', '.jpeg', '.png'):
-            matches = sorted(base.glob(f'*{frame_id}*{ext}'))
+            exact = base / f'{frame_id}{ext}'
+            if exact.exists():
+                return exact
+        for ext in ('.mat', '.npy', '.jpg', '.jpeg', '.png'):
+            matches = sorted(
+                path for path in base.glob(f'*{frame_id}*{ext}')
+                if path.stem == frame_id or path.stem.endswith(f'_{frame_id}')
+            )
             if matches:
                 return matches[0]
     return None
