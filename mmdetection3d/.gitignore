@@ -114,6 +114,9 @@ data
 *.pkl.json
 *.log.json
 work_dirs/
+logs/
+slurm-*.out
+slurm-*.err
 exps/
 *~
 mmdet3d/.mim
