@@ -7,6 +7,7 @@ from data_converter.create_gt_database import create_groundtruth_database
 from data_converter import nuscenes_converter as nuscenes_converter
 from data_converter import lyft_converter as lyft_converter
 from data_converter import kitti_converter as kitti
+from data_converter import kradar_converter as kradar
 from data_converter import indoor_converter as indoor
 import argparse
 from os import path as osp
@@ -47,6 +48,20 @@ def kitti_data_prep(root_path, info_prefix, version, out_dir):
         relative_path=False,
         mask_anno_path='instances_train.json',
         with_mask=(version == 'mask'))
+
+
+def kradar_data_prep(root_path, info_prefix, out_dir, args):
+    kradar.create_kradar_infos(
+        root_path=root_path,
+        out_dir=out_dir,
+        info_prefix=info_prefix,
+        coord_type=args.coord_type,
+        z_offset=args.z_offset,
+        cube_percentile=args.cube_percentile,
+        max_points=args.max_points,
+        val_ratio=args.val_ratio,
+        train_split=args.train_split,
+        val_split=args.val_split)
 
 
 def nuscenes_data_prep(root_path,
@@ -228,6 +243,41 @@ parser.add_argument(
 parser.add_argument('--extra-tag', type=str, default='kitti')
 parser.add_argument(
     '--workers', type=int, default=4, help='number of threads to be used')
+parser.add_argument(
+    '--coord-type',
+    choices=['radar', 'lidar'],
+    default='radar',
+    help='K-Radar label/point coordinate target')
+parser.add_argument(
+    '--z-offset',
+    type=float,
+    default=0.0,
+    help='K-Radar radar-coordinate z offset used with --coord-type radar')
+parser.add_argument(
+    '--cube-percentile',
+    type=float,
+    default=99.0,
+    help='K-Radar radar_zyx_cube percentile threshold')
+parser.add_argument(
+    '--max-points',
+    type=int,
+    default=20000,
+    help='Maximum K-Radar radar cube points per frame')
+parser.add_argument(
+    '--val-ratio',
+    type=float,
+    default=0.2,
+    help='Validation ratio when K-Radar split files are not provided')
+parser.add_argument(
+    '--train-split',
+    type=str,
+    default=None,
+    help='Optional K-Radar train split file with "sequence,frame" rows')
+parser.add_argument(
+    '--val-split',
+    type=str,
+    default=None,
+    help='Optional K-Radar val split file with "sequence,frame" rows')
 args = parser.parse_args()
 
 if __name__ == '__main__':
@@ -237,6 +287,12 @@ if __name__ == '__main__':
             info_prefix=args.extra_tag,
             version=args.version,
             out_dir=args.out_dir)
+    elif args.dataset == 'kradar':
+        kradar_data_prep(
+            root_path=args.root_path,
+            info_prefix='kradar' if args.extra_tag == 'kitti' else args.extra_tag,
+            out_dir=args.out_dir,
+            args=args)
     #-------------只运行这个生成pkl------------------------------
     elif args.dataset == 'nuscenes' and args.version != 'v1.0-mini':
         #-------先生成train和val--------------
