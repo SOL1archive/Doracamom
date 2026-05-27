@@ -5,6 +5,6 @@ from .lyft_eval import lyft_eval
 from .seg_eval import seg_eval
 
 __all__ = [
-    'kitti_eval_coco_style', 'kitti_eval', 'indoor_eval', 'lyft_eval',
-    'seg_eval'
+    'kitti_eval_coco_style', 'kitti_eval', 'kitti_eval_tj4d', 'indoor_eval',
+    'lyft_eval', 'seg_eval'
 ]

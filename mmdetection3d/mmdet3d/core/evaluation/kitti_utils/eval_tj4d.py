@@ -742,7 +742,7 @@ def kitti_eval_tj4d(gt_annos,
             pred_alpha = True
             break
     for anno in gt_annos:
-        if anno['alpha'][0] != -10:
+        if len(anno['alpha']) > 0 and anno['alpha'][0] != -10:
             valid_alpha_gt = True
             break
     compute_aos = (pred_alpha and valid_alpha_gt)

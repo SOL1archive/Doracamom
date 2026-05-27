@@ -50,7 +50,7 @@ class KittiDataset_tj4d(Custom3DDataset):
         pcd_limit_range (list): The range of point cloud used to filter
             invalid predicted boxes. Default: [0, -40, -3, 70.4, 40, 0.0].
     """
-    CLASSES = ('car', 'pedestrian', 'cyclist','truck')  #修改,此处小写和顺序会不会有问题
+    CLASSES = ('Car', 'Pedestrian', 'Cyclist', 'Truck')
 
     def __init__(self,
                  data_root,
@@ -281,7 +281,8 @@ class KittiDataset_tj4d(Custom3DDataset):
             pklfile_prefix = osp.join(tmp_dir.name, 'results')
         else:
             tmp_dir = None
-        outputs = outputs['bbox_results']
+        if isinstance(outputs, dict) and 'bbox_results' in outputs:
+            outputs = outputs['bbox_results']
         if not isinstance(outputs[0], dict):
             result_files = self.bbox2result_kitti2d(outputs, self.CLASSES,
                                                     pklfile_prefix,
@@ -349,9 +350,20 @@ class KittiDataset_tj4d(Custom3DDataset):
         if isinstance(result_files, dict):
             ap_dict = dict()
             for name, result_files_ in result_files.items():
-                eval_types = ['bbox', 'bev', '3d']
                 if 'img' in name:
                     eval_types = ['bbox']
+                elif metric is None:
+                    eval_types = ['bbox', 'bev', '3d']
+                else:
+                    metrics = [metric] if isinstance(metric, str) else metric
+                    eval_types = [
+                        eval_type for eval_type in ['bbox', 'bev', '3d']
+                        if eval_type in metrics
+                    ]
+                    if not eval_types and 'img_bbox' in metrics:
+                        eval_types = ['bbox']
+                    if not eval_types:
+                        eval_types = ['bbox', 'bev', '3d']
                 ap_result_str, ap_dict_ = kitti_eval(
                     gt_annos,
                     result_files_,
@@ -643,7 +655,7 @@ class KittiDataset_tj4d(Custom3DDataset):
                 box3d_camera=np.zeros([0, 7]),
                 box3d_lidar=np.zeros([0, 7]),
                 scores=np.zeros([0]),
-                label_preds=np.zeros([0, 4]),
+                label_preds=np.zeros([0]),
                 sample_idx=sample_idx)
 
         rect = info['calib']['R0_rect'].astype(np.float32)
@@ -686,7 +698,7 @@ class KittiDataset_tj4d(Custom3DDataset):
                 box3d_camera=np.zeros([0, 7]),
                 box3d_lidar=np.zeros([0, 7]),
                 scores=np.zeros([0]),
-                label_preds=np.zeros([0, 4]),
+                label_preds=np.zeros([0]),
                 sample_idx=sample_idx)
 
     def _build_default_pipeline(self):
