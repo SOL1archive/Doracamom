@@ -1,11 +1,13 @@
 import argparse
 import importlib
+import itertools
 import json
 import os
 import time
 from pathlib import Path
 
 import torch
+import torch.distributed as dist
 from mmcv import Config
 from mmcv.parallel import MMDataParallel
 from mmcv.runner import load_checkpoint, wrap_fp16_model
@@ -62,8 +64,20 @@ def cuda_synchronize():
         torch.cuda.synchronize()
 
 
+def init_single_process_group():
+    if dist.is_available() and not dist.is_initialized():
+        backend = 'nccl' if torch.cuda.is_available() else 'gloo'
+        port = os.environ.get('PROFILE_DIST_PORT',
+                              str(int(os.environ.get('PORT', '28521')) + 1))
+        dist.init_process_group(
+            backend=backend,
+            init_method=f'tcp://127.0.0.1:{port}',
+            rank=0,
+            world_size=1)
+
+
 def run_once(model, data):
-    with torch.no_grad():
+    with torch.inference_mode():
         return model(return_loss=False, rescale=True, **data)
 
 
@@ -91,6 +105,8 @@ def main():
         torch.backends.cuda.matmul.allow_tf32 = False
         torch.backends.cudnn.allow_tf32 = False
 
+    init_single_process_group()
+
     samples_per_gpu = prepare_test_cfg(cfg)
     dataset = build_dataset(cfg.data.test)
     data_loader = build_dataloader(
@@ -114,7 +130,7 @@ def main():
     profiler_flops = None
     max_iters = args.warmup + args.samples
 
-    for idx, data in enumerate(data_loader):
+    for idx, data in enumerate(itertools.cycle(data_loader)):
         if idx >= max_iters:
             break
         cuda_synchronize()
@@ -134,10 +150,15 @@ def main():
     result = dict(
         config=args.config,
         checkpoint=args.checkpoint,
+        dataset_size=len(dataset),
+        requested_samples=args.samples,
+        requested_warmup=args.warmup,
         samples=len(latencies),
         warmup=args.warmup,
+        batch_size=samples_per_gpu,
         params=params,
         profiler_flops=profiler_flops,
+        single_batch_latency_s=latencies[0],
         mean_latency_s=mean_latency,
         median_latency_s=sorted(latencies)[len(latencies) // 2],
         fps=1.0 / mean_latency)

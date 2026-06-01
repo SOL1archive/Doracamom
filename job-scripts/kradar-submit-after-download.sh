@@ -34,14 +34,14 @@ echo "Download appears complete at $(date)"
 ls -lh "${ZIP_PATH}"
 file "${ZIP_PATH}"
 
-unpack_job="$(sbatch --parsable job-scripts/kradar-sample-unpack.sbatch)"
+unpack_job="$(sbatch --parsable job-scripts/kradar-sample-unpack.sh)"
 echo "Submitted unpack job: ${unpack_job}"
 
 train_job="$(
   sbatch --parsable \
     --dependency=afterok:${unpack_job} \
     --export=ALL,SAMPLE_TRAIN_FRAMES=8,SAMPLE_VAL_FRAMES=2,PROFILE_SAMPLES=10,PROFILE_WARMUP=3 \
-    job-scripts/doracamom-kradar-a6000-train-eval-profile.sbatch
+    job-scripts/doracamom-kradar-a6000-train-eval-profile.sh
 )"
 echo "Submitted train/eval/profile job: ${train_job}"
 

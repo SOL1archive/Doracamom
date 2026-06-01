@@ -160,3 +160,30 @@ If you find this project useful in your research, please consider citing:
   pages={1-1},
   doi={10.1109/TCSVT.2026.3657111}}
 ```
+
+# Local Checkpoint Notes
+
+The official model zoo checkpoints are hosted on Baidu Netdisk, so direct `wget`/`curl` downloads may not work. Download them manually from a browser or ask for a direct mirror.
+
+| Checkpoint | Link | Suggested local path |
+| :--- | :--- | :--- |
+| Doracamom VoD | [Link](https://pan.baidu.com/s/1l2loPmbbiMDOYOtSh0kB-w?pwd=hdwn) | `ckpts/doracamom_vod.pth` |
+| Doracamom TJ4D | [Link](https://pan.baidu.com/s/1XV6jHZQrur2ZBc9Yw4XNIA?pwd=yw9i) | `ckpts/doracamom_tj4d.pth` |
+| RadarPillarNet | [Link](https://pan.baidu.com/s/12DjKyFX-36e8feg54ZGY-w?pwd=TJ4D) | `ckpts/radarpillarnet.pth` |
+| FCOS3D image pretrain | [Link](https://github.com/zhiqi-li/storage/releases/download/v1.0/r50_fcos3d_pretrain.pth) | `ckpts/r50_fcos3d_pretrain.pth` |
+
+Example 1-GPU sanity training commands:
+
+```bash
+PORT=28512 ./tools/dist_train.sh \
+  projects/configs/Doracamom/Doracamom_vod.py \
+  1 \
+  --work-dir work_dirs/Doracamom_vod/sanity_1gpu \
+  --cfg-options load_pts_from=ckpts/radarpillarnet.pth
+
+PORT=28513 ./tools/dist_train.sh \
+  projects/configs/Doracamom/Doracamom_TJ4D.py \
+  1 \
+  --work-dir work_dirs/Doracamom_TJ4D/sanity_1gpu \
+  --cfg-options load_pts_from=ckpts/radarpillarnet.pth
+```
