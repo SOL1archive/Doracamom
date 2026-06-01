@@ -129,6 +129,11 @@ data = dict(
 
 evaluation = dict(interval=1, pipeline=test_pipeline)
 work_dir = 'work_dirs/Doracamom_KRadar'
+# Single-frame training (queue_length=1) leaves the temporal-encoder / prev-BEV
+# alignment params without gradients on the first backward. With the default
+# find_unused_parameters=False this hangs DDP on the first NCCL collective
+# (observed as a BROADCAST watchdog timeout). Enabling it lets DDP skip them.
+find_unused_parameters = True
 load_pts_from = None
 load_from = None
 resume_from = None
