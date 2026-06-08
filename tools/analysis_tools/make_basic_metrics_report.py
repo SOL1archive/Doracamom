@@ -2,6 +2,7 @@ import argparse
 import ast
 import json
 import re
+from collections import OrderedDict
 from pathlib import Path
 
 
@@ -33,6 +34,33 @@ def load_accuracy(stdout_log):
     return candidates[-1] if candidates else {}
 
 
+AP_HEADER_RE = re.compile(r'^\s*([A-Za-z][\w/ ]*?) AP[0-9]*@([^:]+):\s*$')
+AP_ROW_RE = re.compile(r'^\s*(bbox|bev|3d|aos)\s*AP:\s*([-\d.,\s]+)$')
+
+
+def load_ap_table(text):
+    """Parse KITTI-style AP blocks from the eval log.
+
+    Matches a 'Class AP@iou:' header followed by 'bbox/bev/3d/aos AP: e, m, h'
+    rows. Returns OrderedDict[(class, iou_setting)] -> {kind: [easy, mod, hard]}.
+    The 3D AP captured here is the paper-style detection metric (the printed
+    result dict alone is 2D-only for some datasets).
+    """
+    grouped = OrderedDict()
+    cur = None
+    for line in text.splitlines():
+        header = AP_HEADER_RE.match(line)
+        if header:
+            cur = (header.group(1).strip(), header.group(2).strip())
+            continue
+        row = AP_ROW_RE.match(line)
+        if row and cur is not None:
+            vals = [float(v) for v in re.findall(r'-?\d+\.?\d*', row.group(2))]
+            if len(vals) >= 3:
+                grouped.setdefault(cur, OrderedDict())[row.group(1)] = vals[:3]
+    return grouped
+
+
 def fmt_float(value):
     if value is None:
         return 'n/a'
@@ -58,12 +86,27 @@ def make_markdown(report):
         '## Accuracy',
         '',
     ]
-    if report['accuracy']:
+    ap = report.get('ap_table') or {}
+    if ap:
+        lines += [
+            '_KITTI-style AP as easy / moderate / hard. 3D AP is the '
+            'paper-style detection metric._', '',
+            '| Class @ IoU | bbox AP | bev AP | 3D AP |',
+            '| :--- | ---: | ---: | ---: |',
+        ]
+        for label, kinds in ap.items():
+            def cell(kind):
+                vals = kinds.get(kind)
+                return ' / '.join(f'{v:.2f}' for v in vals) if vals else 'n/a'
+            lines.append(
+                f"| {label} | {cell('bbox')} | {cell('bev')} "
+                f"| {cell('3d')} |")
+    elif report['accuracy']:
         lines += ['| Metric | Value |', '| :--- | ---: |']
         for key in sorted(report['accuracy']):
             lines.append(f"| `{key}` | {fmt_float(report['accuracy'][key])} |")
     else:
-        lines.append('No numeric accuracy metrics were parsed from the eval log.')
+        lines.append('No accuracy metrics were parsed from the eval log.')
 
     latency = report['latency']
     lines += [
@@ -93,6 +136,9 @@ def main():
         'config': profile.get('config'),
         'checkpoint': profile.get('checkpoint'),
         'accuracy': load_accuracy(args.stdout_log),
+        'ap_table': {f'{cls} @ {iou}': kinds for (cls, iou), kinds in
+                     load_ap_table(Path(args.stdout_log).read_text(
+                         errors='replace')).items()},
         'latency': profile,
     }
 
